@@ -352,13 +352,19 @@
   [reader initch opts pending-forms]
   (let [ch (read-char reader)]
     (if-not (whitespace? ch)
-      (let [token (read-token reader ch)]
-        (if-let [[ns name] (parse-symbol token)]
-          (if (identical? \: (nth token 0))
-            (if-let [ns (and ns (resolve-ns (symbol (subs ns 1))))]
-              (keyword (str ns) name)
-              (reader-error reader "Invalid token: :" token))
-            (keyword ns name))
+      (let [token (read-token reader ch)
+            s (parse-symbol token)]
+        (if s
+          (let [ns (s 0)
+                name (s 1)]
+            (if (identical? \: (nth token 0))
+              (if ns
+                (let [ns (resolve-ns (symbol (subs ns 1)))]
+                  (if ns
+                    (keyword (str ns) name)
+                    (reader-error reader "Invalid token: :" token)))
+                (keyword (str *ns*) (subs name 1)))
+              (keyword ns name)))
           (reader-error reader "Invalid token: :" token)))
       (reader-error reader "Invalid token: :"))))
 
