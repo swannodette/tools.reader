@@ -16,7 +16,7 @@
 ;; helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn number-literal?
+(defn ^boolean number-literal?
   "Checks whether the reader is at the start of a number literal"
   [reader initch]
   (or (numeric? initch)
@@ -28,7 +28,7 @@
    char."
   [pred rdr]
   (loop [ch (read-char rdr)]
-    (if (pred ch)
+    (if ^boolean (pred ch)
       (recur (read-char rdr))
       ch)))
 
@@ -47,19 +47,19 @@
 (defn- match-int
   [s]
   (let [m (vec (re-find int-pattern s))]
-    (if (m 2)
+    (if-not (nil? (m 2))
       0
-      (let [negate? (= "-" (m 1))
+      (let [^boolean negate? (identical? "-" (m 1))
             a (cond
-                (m 3) [(m 3) 10]
-                (m 4) [(m 4) 16]
-                (m 5) [(m 5) 8]
-                (m 7) [(m 7) (js/parseInt (m 6))]
-                (m 8) [(m 8) 10]
-                :else        [nil nil])
+                (not (nil? (m 3))) [(m 3) 10]
+                (not (nil? (m 4))) [(m 4) 16]
+                (not (nil? (m 5))) [(m 5) 8]
+                (not (nil? (m 7))) [(m 7) (js/parseInt (m 6))]
+                (not (nil? (m 8))) [(m 8) 10]
+                :else              [nil nil])
             n (a 0)
             radix (int (a 1))]
-        (when n
+        (when-not (nil? n)
           (let [bn (js/parseInt n radix)
                 bn (if negate? (* -1 bn) bn)]
             bn))))))
@@ -78,13 +78,13 @@
 (defn- match-float
   [s]
   (let [m (vec (re-find float-pattern s))]
-    (if (m 4) ;;; for BigDecimal "10.03M", as all parsed to js/Number
+    (if-not (nil? (m 4)) ;; for BigDecimal "10.03M", as all parsed to js/Number
       (js/parseFloat (m 1))
       (js/parseFloat s))))
 
-(defn matches? [pattern s]
+(defn ^boolean matches? [pattern s]
   (let [[match] (re-find pattern s)]
-    (= match s)))
+    (identical? match s)))
 
 (defn match-number [s]
   (if (matches? int-pattern s)
@@ -97,7 +97,7 @@
 (defn parse-symbol
   "Parses a string into a vector of the namespace and symbol"
   [token]
-  (when-not (or (= "" token)
+  (when-not (or (identical? "" token)
                 (re-find #":$" token)
                 (re-find #"^::" token))
     (let [ns-idx (.indexOf token "/")]
@@ -107,12 +107,12 @@
           (when-not (== ns-idx (count token))
             (let [sym (subs token ns-idx)]
               (when (and (not (numeric? (nth sym 0)))
-                         (not (= "" sym))
+                         (not (identical? "" sym))
                          (not (re-find #":$" ns))
-                         (or (= sym "/")
+                         (or (identical? sym "/")
                              (== -1 (.indexOf sym "/"))))
                 [ns sym]))))
-        (when (or (= token "/")
+        (when (or (identical? token "/")
                   (== -1 (.indexOf token "/")))
           [nil token])))))
 

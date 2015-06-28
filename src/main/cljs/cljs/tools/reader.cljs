@@ -37,7 +37,7 @@
          ^:dynamic *suppress-read*
          default-data-readers)
 
-(defn- macro-terminating? [ch]
+(defn- ^boolean macro-terminating? [ch]
   (case ch
     (\" \; \@ \^ \` \~ \( \) \[ \] \{ \} \\) true
     false))
@@ -78,13 +78,13 @@
   [rdr ch opts pending-forms]
   (let [sb (StringBuffer.)]
     (loop [ch (read-char rdr)]
-      (if (= \" ch)
+      (if (identical? \" ch)
         (re-pattern (str sb))
         (if (nil? ch)
           (reader-error rdr "EOF while reading regex")
           (do
             (.append sb ch )
-            (when (= \\ ch)
+            (when (identical? \\ ch)
               (let [ch (read-char rdr)]
                 (if (nil? ch)
                   (reader-error rdr "EOF while reading regex"))
