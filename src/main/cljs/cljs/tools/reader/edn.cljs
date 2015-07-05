@@ -286,7 +286,7 @@
     (when-not (map? m)
       (reader-error rdr "Metadata must be Symbol, Keyword, String or Map"))
     (let [o (read rdr true nil opts)]
-      (if (satisfies? IMeta o)
+      (if (implements? IMeta o)
         (with-meta o (merge (meta o) m))
         (reader-error rdr "Metadata can only be applied to IMetas")))))
 

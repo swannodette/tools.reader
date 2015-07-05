@@ -207,7 +207,7 @@ logging frames. Called when pushing a character back."
 (defn indexing-reader?
   "Returns true if the reader satisfies IndexingReader"
   [rdr]
-  (satisfies? IndexingReader rdr))
+  (implements? IndexingReader rdr))
 
 (defn string-reader
   "Creates a StringReader from a given string"
@@ -288,7 +288,7 @@ logging frames. Called when pushing a character back."
     (try
       (swap! (.-frames reader) update-in [:offset] conj (.getLength buffer))
       (let [ret (f)]
-        (if (satisfies? IMeta ret)
+        (if (implements? IMeta ret)
           (merge-meta ret {:source (peek-source-log @ (.-frames reader))})
           ret))
       (finally

@@ -384,11 +384,11 @@
       (when-not (map? m)
         (reader-error rdr "Metadata must be Symbol, Keyword, String or Map"))
       (let [o (read* rdr true nil opts pending-forms)]
-        (if (satisfies? IMeta o)
+        (if (implements? IMeta o)
           (let [m (if (and line (seq? o))
                     (assoc m :line line :column column)
                     m)]
-            (if (satisfies? IWithMeta o)
+            (if (implements? IWithMeta o)
               (with-meta o (merge (meta o) m))
               (reset-meta! o m)))
           (reader-error rdr "Metadata can only be applied to IMetas"))))))
@@ -494,7 +494,7 @@
       rdr
       (if splicing
         (do
-          (if (satisfies? ISequential result)
+          (if (implements? ISequential result)
             (do
               (garray/insertArrayAt pending-forms (to-array result) 0)
               rdr)
@@ -644,7 +644,7 @@
         gs)))
 
 (defn- add-meta [form ret]
-  (if (and (satisfies? IWithMeta form)
+  (if (and (implements? IWithMeta form)
            (seq (dissoc (meta form) :line :column :end-line :end-column :file :source)))
     (list 'cljs.core/with-meta ret (syntax-quote* (meta form)))
     ret))
@@ -697,7 +697,7 @@
     (coll? form)
     (cond
 
-     (satisfies? IRecord form) form
+     (implements? IRecord form) form
      (map? form) (syntax-quote-coll (map-func form) (flatten-map form))
      (vector? form) (list 'cljs.core/vec (syntax-quote-coll nil form))
      (set? form) (syntax-quote-coll 'cljs.core/hash-set form)
