@@ -294,11 +294,3 @@ logging frames. Called when pushing a character back."
       (finally
         (swap! (.-frames reader) update-in [:offset] rest)))))
 
-(defn log-source
-  "If reader is a SourceLoggingPushbackReader, execute body in a source
-  logging context. Otherwise, execute body, returning the result."
-  [reader body-fn]
-  (if (and (source-logging-reader? reader)
-           (not (whitespace? (peek-char reader))))
-    (log-source* reader body-fn)
-    (body-fn)))

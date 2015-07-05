@@ -12,10 +12,11 @@
   (:refer-clojure :exclude [read read-line read-string char
                             default-data-readers *default-data-reader-fn*
                             *data-readers* *suppress-read*])
+  (:require-macros [cljs.tools.reader.reader-types :refer [log-source]])
   (:require [cljs.tools.reader.reader-types :refer
              [read-char reader-error unread peek-char indexing-reader?
               get-line-number get-column-number get-file-name
-              string-push-back-reader log-source]]
+              string-push-back-reader]]
             [cljs.tools.reader.impl.utils :refer
              [char ex-info? whitespace? numeric? desugar-meta next-id munge
               ReaderConditional reader-conditional reader-conditional?]]
@@ -378,20 +379,19 @@
   "Read metadata and return the following object with the metadata applied"
   [rdr _ opts pending-forms]
   (log-source rdr
-    (fn []
-      (let [[line column] (starting-line-col-info rdr)
-            m (desugar-meta (read* rdr true nil opts pending-forms))]
-        (when-not (map? m)
-          (reader-error rdr "Metadata must be Symbol, Keyword, String or Map"))
-        (let [o (read* rdr true nil opts pending-forms)]
-          (if (satisfies? IMeta o)
-            (let [m (if (and line (seq? o))
-                      (assoc m :line line :column column)
-                      m)]
-              (if (satisfies? IWithMeta o)
-                (with-meta o (merge (meta o) m))
-                (reset-meta! o m)))
-            (reader-error rdr "Metadata can only be applied to IMetas")))))))
+    (let [[line column] (starting-line-col-info rdr)
+          m (desugar-meta (read* rdr true nil opts pending-forms))]
+      (when-not (map? m)
+        (reader-error rdr "Metadata must be Symbol, Keyword, String or Map"))
+      (let [o (read* rdr true nil opts pending-forms)]
+        (if (satisfies? IMeta o)
+          (let [m (if (and line (seq? o))
+                    (assoc m :line line :column column)
+                    m)]
+            (if (satisfies? IWithMeta o)
+              (with-meta o (merge (meta o) m))
+              (reset-meta! o m)))
+          (reader-error rdr "Metadata can only be applied to IMetas"))))))
 
 (defn- read-set
   [rdr _ opts pending-forms]
@@ -835,26 +835,25 @@
      (read* reader eof-error? sentinel nil opts pending-forms))
   ([reader eof-error? sentinel return-on opts pending-forms]
      (try
-       ((fn target []
-          (log-source reader
-            (fn []
-              (if (seq pending-forms)
-                (let [form (first pending-forms)]
-                  (garray/removeAt pending-forms 0)
-                  form)
-                (let [ch (read-char reader)]
-                  (cond
-                   (whitespace? ch) (trampoline target)
-                   (nil? ch) (if eof-error? (reader-error reader "EOF") sentinel)
-                   (= ch return-on) READ_FINISHED
-                   (number-literal? reader ch) (read-number reader ch)
-                   :else (let [f (macros ch)]
-                           (if f
-                             (let [res (f reader ch opts pending-forms)]
-                               (if (identical? res reader)
-                                 (trampoline target)
-                                 res))
-                             (read-symbol reader ch))))))))))
+       (loop []
+         (log-source reader
+           (if (seq pending-forms)
+             (let [form (first pending-forms)]
+               (garray/removeAt pending-forms 0)
+               form)
+             (let [ch (read-char reader)]
+               (cond
+                 (whitespace? ch) (recur)
+                 (nil? ch) (if eof-error? (reader-error reader "EOF") sentinel)
+                 (= ch return-on) READ_FINISHED
+                 (number-literal? reader ch) (read-number reader ch)
+                 :else (let [f (macros ch)]
+                         (if f
+                           (let [res (f reader ch opts pending-forms)]
+                             (if (identical? res reader)
+                               (recur)
+                               res))
+                           (read-symbol reader ch))))))))
        (catch js/Error e
          (if (ex-info? e)
            (let [d (ex-data e)]
