@@ -272,11 +272,11 @@ logging frames. Called when pushing a character back."
                             (when-let [file-name (get-file-name rdr)]
                               {:file file-name})))))))
 
-(defn source-logging-reader?
+(defn ^boolean source-logging-reader?
   [rdr]
   (instance? SourceLoggingPushbackReader rdr))
 
-(defn line-start?
+(defn ^boolean line-start?
   "Returns true if rdr is an IndexingReader and the current char starts a new line"
   [rdr]
   (when (indexing-reader? rdr)

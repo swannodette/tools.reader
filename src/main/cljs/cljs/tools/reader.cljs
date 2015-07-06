@@ -836,11 +836,11 @@
   {})
 
 (defn- read*-internal
-  [reader eof-error? sentinel return-on opts pending-forms]
+  [reader ^boolean eof-error? sentinel return-on opts pending-forms]
   (loop []
     (log-source reader
-      (if (seq pending-forms)
-        (let [form (first pending-forms)]
+      (if-not ^boolean (garray/isEmpty pending-forms)
+        (let [form (aget pending-forms 0)]
           (garray/removeAt pending-forms 0)
           form)
         (let [ch (read-char reader)]
@@ -850,7 +850,7 @@
             (identical? ch return-on) READ_FINISHED
             (number-literal? reader ch) (read-number reader ch)
             :else (let [f (macros ch)]
-                    (if f
+                    (if-not (nil? f)
                       (let [res (f reader ch opts pending-forms)]
                         (if (identical? res reader)
                           (recur)
