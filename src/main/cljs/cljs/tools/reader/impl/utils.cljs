@@ -38,12 +38,15 @@
     (-write writer (str "#?" (when (:splicing? coll) "@")))
     (pr-writer (:form coll) writer opts)))
 
+(def ws-rx #"[\s]")
+
 (defn ^boolean whitespace?
   "Checks whether a given character is whitespace"
   [ch]
   (when-not (nil? ch)
-    (or (identical? ch \,)
-        ^boolean (gstring/isEmptyOrWhitespace ch))))
+    (if (identical? ch \,)
+      true
+      (.test ws-rx ch))))
 
 (defn ^boolean numeric?
   "Checks whether a given character is numeric"
