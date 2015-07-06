@@ -196,21 +196,25 @@
 (defonce ^:private READ_FINISHED (js/Object.))
 
 (def ^:dynamic *read-delim* false)
+
+(defn- read-delimited-internal [delim rdr opts pending-forms]
+  (let [[start-line start-column] (starting-line-col-info rdr)
+        delim (char delim)]
+    (loop [a (transient [])]
+      (let [form (read* rdr false READ_EOF delim opts pending-forms)]
+        (if (identical? form READ_FINISHED)
+          (persistent! a)
+          (if (identical? form READ_EOF)
+            (reader-error rdr "EOF while reading"
+              (when start-line
+                (str ", starting at line " start-line " and column " start-column)))
+            (recur (conj! a form))))))))
+
 (defn- read-delimited
   "Reads and returns a collection ended with delim"
   [delim rdr opts pending-forms]
-  (let [[start-line start-column] (starting-line-col-info rdr)
-        delim (char delim)]
-    (binding [*read-delim* true]
-      (loop [a (transient [])]
-        (let [form (read* rdr false READ_EOF delim opts pending-forms)]
-          (if (identical? form READ_FINISHED)
-            (persistent! a)
-            (if (identical? form READ_EOF)
-              (reader-error rdr "EOF while reading"
-                            (when start-line
-                              (str ", starting at line " start-line " and column " start-column)))
-              (recur (conj! a form)))))))))
+  (binding [*read-delim* true]
+    (read-delimited-internal delim rdr opts pending-forms)))
 
 (defn- read-list
   "Read in a list, including its location if the reader is an indexing reader"
@@ -304,12 +308,13 @@
   [reader _ opts pending-forms]
   (loop [sb (StringBuffer.)
          ch (read-char reader)]
-    (case ch
-      nil (reader-error reader "EOF while reading string")
-      \\ (recur (doto sb (.append (escape-char sb reader)))
-                (read-char reader))
-      \" (str sb)
-      (recur (doto sb (.append ch)) (read-char reader)))))
+    (if (nil? ch)
+      (reader-error reader "EOF while reading string")
+      (case ch
+        \\ (recur (doto sb (.append (escape-char sb reader)))
+             (read-char reader))
+        \" (str sb)
+        (recur (doto sb (.append ch)) (read-char reader))))))
 
 (defn- read-symbol
   [rdr initch]
@@ -830,30 +835,34 @@
   May be overridden by binding *data-readers*"
   {})
 
+(defn- read*-internal
+  [reader eof-error? sentinel return-on opts pending-forms]
+  (loop []
+    (log-source reader
+      (if (seq pending-forms)
+        (let [form (first pending-forms)]
+          (garray/removeAt pending-forms 0)
+          form)
+        (let [ch (read-char reader)]
+          (cond
+            (whitespace? ch) (recur)
+            (nil? ch) (if eof-error? (reader-error reader "EOF") sentinel)
+            (identical? ch return-on) READ_FINISHED
+            (number-literal? reader ch) (read-number reader ch)
+            :else (let [f (macros ch)]
+                    (if f
+                      (let [res (f reader ch opts pending-forms)]
+                        (if (identical? res reader)
+                          (recur)
+                          res))
+                      (read-symbol reader ch)))))))))
+
 (defn- read*
   ([reader eof-error? sentinel opts pending-forms]
      (read* reader eof-error? sentinel nil opts pending-forms))
   ([reader eof-error? sentinel return-on opts pending-forms]
      (try
-       (loop []
-         (log-source reader
-           (if (seq pending-forms)
-             (let [form (first pending-forms)]
-               (garray/removeAt pending-forms 0)
-               form)
-             (let [ch (read-char reader)]
-               (cond
-                 (whitespace? ch) (recur)
-                 (nil? ch) (if eof-error? (reader-error reader "EOF") sentinel)
-                 (= ch return-on) READ_FINISHED
-                 (number-literal? reader ch) (read-number reader ch)
-                 :else (let [f (macros ch)]
-                         (if f
-                           (let [res (f reader ch opts pending-forms)]
-                             (if (identical? res reader)
-                               (recur)
-                               res))
-                           (read-symbol reader ch))))))))
+       (read*-internal reader eof-error? sentinel return-on opts pending-forms)
        (catch js/Error e
          (if (ex-info? e)
            (let [d (ex-data e)]
@@ -907,5 +916,5 @@
   ([s]
      (read-string {} s))
   ([opts s]
-     (when (and s (not= s ""))
+     (when (and s (not (identical? s "")))
        (read opts (string-push-back-reader s)))))
