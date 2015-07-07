@@ -46,13 +46,13 @@
 (defn- read-token
   "Read in a single logical token from the reader"
   [rdr initch]
-  (if-not initch
+  (if (nil? initch)
     (reader-error rdr "EOF while reading")
     (loop [sb (StringBuffer.) ch initch]
       (if (or (whitespace? ch)
               (macro-terminating? ch)
               (nil? ch))
-        (do (when ch
+        (do (when-not (nil? ch)
               (unread rdr ch))
             (str sb))
         (recur (.append sb ch) (read-char rdr))))))
@@ -316,10 +316,22 @@
         \" (str sb)
         (recur (doto sb (.append ch)) (read-char reader))))))
 
+(defn- loc-info [rdr line column]
+  (when-not (nil? line)
+    (let [file (get-file-name rdr)
+          filem (when-not (nil? file) {:file file})
+          [end-line end-column] (ending-line-col-info rdr)
+          lcm {:line line
+               :column column
+               :end-line end-line
+               :end-column end-column}]
+      (merge filem lcm))))
+
 (defn- read-symbol
   [rdr initch]
-  (let [[line column] (starting-line-col-info rdr)]
-    (when-let [token (read-token rdr initch)]
+  (let [[line column] (starting-line-col-info rdr)
+        token (read-token rdr initch)]
+    (when-not (nil? token)
       (case token
 
         ;; special symbols
@@ -331,18 +343,11 @@
         "-Infinity" js/Number.NEGATIVE_INFINITY
         ("Infinity" "+Infinity") js/Number.POSITIVE_INFINITY
 
-        (or (when-let [p (parse-symbol token)]
-              (with-meta (symbol (p 0) (p 1))
-                (when line
-                  (merge
-                   (when-let [file (get-file-name rdr)]
-                     {:file file})
-                   (let [[end-line end-column] (ending-line-col-info rdr)]
-                     {:line line
-                      :column column
-                      :end-line end-line
-                      :end-column end-column})))))
-            (reader-error rdr "Invalid token: " token))))))
+        (let [^not-native p (parse-symbol token)]
+          (if-not (nil? p)
+            (let [^not-native sym (symbol (-nth p 0) (-nth p 1))]
+              (-with-meta sym (loc-info rdr line column)))
+            (reader-error rdr "Invalid token: " token)))))))
 
 (def ^:dynamic *alias-map*
   "Map from ns alias to ns, if non-nil, it will be used to resolve read-time
