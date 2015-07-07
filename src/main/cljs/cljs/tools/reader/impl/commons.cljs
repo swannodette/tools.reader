@@ -98,17 +98,18 @@
   "Parses a string into a vector of the namespace and symbol"
   [token]
   (when-not (or (identical? "" token)
-                (not (nil? (re-find #":$" token)))
-                (not (nil? (re-find #"^::" token))))
+                (true? (.test #":$" token))
+                (true? (.test #"^::" token)))
     (let [ns-idx (.indexOf token "/")
-          ns (and (pos? ns-idx) (subs token 0 ns-idx))]
-      (if-not (false? ns)
+          ns (when (pos? ns-idx)
+               (subs token 0 ns-idx))]
+      (if-not (nil? ns)
         (let [ns-idx (inc ns-idx)]
           (when-not (== ns-idx (count token))
             (let [sym (subs token ns-idx)]
               (when (and (not (numeric? (nth sym 0)))
                          (not (identical? "" sym))
-                         (nil? (re-find #":$" ns))
+                         (false? (.test #":$" ns))
                          (or (identical? sym "/")
                              (== -1 (.indexOf sym "/"))))
                 [ns sym]))))

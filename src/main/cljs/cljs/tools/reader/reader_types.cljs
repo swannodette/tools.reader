@@ -69,20 +69,20 @@
       (char (aget buf 0)))))
 
 (deftype PushbackReader
-    [^not-native rdr buf buf-len ^:mutable buf-pos]
+  [^not-native rdr buf buf-len ^:mutable buf-pos]
   Reader
   (read-char [reader]
-    (char
-     (if (< buf-pos buf-len)
-       (let [r (aget buf buf-pos)]
-         (set! buf-pos (inc buf-pos))
-         r)
-       (read-char rdr))))
+    (let [c (if (< buf-pos buf-len)
+              (aget buf buf-pos)
+              (read-char rdr))]
+      (when (< buf-pos buf-len)
+        (set! buf-pos (inc buf-pos)))
+      (char c)))
   (peek-char [reader]
-    (char
-     (if (< buf-pos buf-len)
-       (aget buf buf-pos)
-       (peek-char rdr))))
+    (let [c (if (< buf-pos buf-len)
+              (aget buf buf-pos)
+              (peek-char rdr))]
+      (char c)))
   IPushbackReader
   (unread [reader ch]
     (when ch
