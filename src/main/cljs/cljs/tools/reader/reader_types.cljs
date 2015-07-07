@@ -69,7 +69,7 @@
       (char (aget buf 0)))))
 
 (deftype PushbackReader
-    [rdr buf buf-len ^:mutable buf-pos]
+    [^not-native rdr buf buf-len ^:mutable buf-pos]
   Reader
   (read-char [reader]
     (char
@@ -90,7 +90,7 @@
       (set! buf-pos (dec buf-pos))
       (aset buf buf-pos ch))))
 
-(defn- normalize-newline [rdr ch]
+(defn- normalize-newline [^not-native rdr ch]
   (if (identical? \return ch)
     (let [c (peek-char rdr)]
       (when (or (identical? \formfeed c)
@@ -100,7 +100,7 @@
     ch))
 
 (deftype IndexingPushbackReader
-    [rdr ^:mutable line ^:mutable column
+    [^not-native rdr ^:mutable line ^:mutable column
      ^:mutable line-start? ^:mutable prev
      ^:mutable prev-column file-name]
   Reader
@@ -163,7 +163,7 @@ logging frames. Called when pushing a character back."
     (.set buffer (subs (str buffer) 0 (dec (.getLength buffer))))))
 
 (deftype SourceLoggingPushbackReader
-    [rdr ^:mutable line ^:mutable column
+    [^not-native rdr ^:mutable line ^:mutable column
      ^:mutable line-start? ^:mutable prev
      ^:mutable prev-column file-name frames]
   Reader
@@ -253,7 +253,7 @@ logging frames. Called when pushing a character back."
 
 (defn read-line
   "Reads a line from the reader or from *in* if no reader is specified"
-  ([rdr]
+  ([^not-native rdr]
      (loop [c (read-char rdr) s (StringBuffer.)]
        (if (newline? c)
          (str s)
@@ -278,7 +278,7 @@ logging frames. Called when pushing a character back."
 
 (defn ^boolean line-start?
   "Returns true if rdr is an IndexingReader and the current char starts a new line"
-  [rdr]
+  [^not-native rdr]
   (when (indexing-reader? rdr)
     (== 1 (get-column-number rdr))))
 

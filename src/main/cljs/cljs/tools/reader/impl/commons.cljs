@@ -18,7 +18,7 @@
 
 (defn ^boolean number-literal?
   "Checks whether the reader is at the start of a number literal"
-  [reader initch]
+  [^not-native reader initch]
   (or (numeric? initch)
       (and (or (identical? \+ initch) (identical?  \- initch))
            (numeric? (peek-char reader)))))
@@ -26,7 +26,7 @@
 (defn read-past
   "Read until first character that doesn't match pred, returning
    char."
-  [pred rdr]
+  [pred ^not-native rdr]
   (loop [ch (read-char rdr)]
     (if ^boolean (pred ch)
       (recur (read-char rdr))
@@ -34,7 +34,7 @@
 
 (defn skip-line
   "Advances the reader to the end of a line. Returns the reader"
-  [reader]
+  [^not-native reader]
   (loop []
     (when-not (newline? (read-char reader))
       (recur)))

@@ -45,7 +45,7 @@
 
 (defn- read-token
   "Read in a single logical token from the reader"
-  [rdr initch]
+  [^not-native rdr initch]
   (if (nil? initch)
     (reader-error rdr "EOF while reading")
     (loop [sb (StringBuffer.) ch initch]
@@ -60,7 +60,7 @@
 (declare read-tagged)
 
 (defn- read-dispatch
-  [rdr _ opts pending-forms]
+  [^not-native rdr _ opts pending-forms]
   (if-let [ch (read-char rdr)]
     (if-let [dm (dispatch-macros ch)]
       (dm rdr ch opts pending-forms)
@@ -76,7 +76,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn read-regex
-  [rdr ch opts pending-forms]
+  [^not-native rdr ch opts pending-forms]
   (let [sb (StringBuffer.)]
     (loop [ch (read-char rdr)]
       (if (identical? \" ch)
@@ -113,7 +113,7 @@
                                 {:type :illegal-argument}))
                (recur (inc i) (+ d (* uc base)))))))))
 
-  ([rdr initch base length exact?]
+  ([^not-native rdr initch base length exact?]
      (loop [i 1 uc (char-code initch base)]
        (if (== uc -1)
          (throw (ex-info. (str "Invalid digit: " initch)
@@ -143,7 +143,7 @@
 
 (defn- read-char*
   "Read in a character literal"
-  [rdr backslash opts pending-forms]
+  [^not-native rdr backslash opts pending-forms]
   (let [ch (read-char rdr)]
     (if-not (nil? ch)
       (let [token (if (or (macro-terminating? ch)
@@ -184,11 +184,11 @@
          :else (reader-error rdr "Unsupported character: \\" token)))
       (reader-error rdr "EOF while reading character"))))
 
-(defn- starting-line-col-info [rdr]
+(defn- starting-line-col-info [^not-native rdr]
   (when (indexing-reader? rdr)
     [(get-line-number rdr) (int (dec (get-column-number rdr)))]))
 
-(defn- ending-line-col-info [rdr]
+(defn- ending-line-col-info [^not-native rdr]
   (when (indexing-reader? rdr)
     [(get-line-number rdr) (get-column-number rdr)]))
 
@@ -273,7 +273,7 @@
           :end-column end-column})))))
 
 (defn- read-number
-  [rdr initch]
+  [^not-native rdr initch]
   (loop [sb (doto (StringBuffer.) (.append initch))
          ch (read-char rdr)]
     (if (or (whitespace? ch) (macros ch) (nil? ch))
@@ -283,7 +283,7 @@
             (reader-error rdr "Invalid number format [" s "]")))
       (recur (doto sb (.append ch)) (read-char rdr)))))
 
-(defn- escape-char [sb rdr]
+(defn- escape-char [sb ^not-native rdr]
   (let [ch (read-char rdr)]
     (case ch
       \t "\t"
@@ -305,7 +305,7 @@
         (reader-error rdr "Unsupported escape character: \\" ch)))))
 
 (defn- read-string*
-  [reader _ opts pending-forms]
+  [^not-native reader _ opts pending-forms]
   (loop [sb (StringBuffer.)
          ch (read-char reader)]
     (if (nil? ch)
@@ -360,7 +360,7 @@
   (get *alias-map* sym sym))
 
 (defn- read-keyword
-  [reader initch opts pending-forms]
+  [^not-native reader initch opts pending-forms]
   (let [ch (read-char reader)]
     (if-not (whitespace? ch)
       (let [token (read-token reader ch)
@@ -512,7 +512,7 @@
         result))))
 
 (defn- read-cond
-  [rdr _ opts pending-forms]
+  [^not-native rdr _ opts pending-forms]
   (when (not (and opts (#{:allow :preserve} (:read-cond opts))))
     (throw (ex-info "Conditional read not allowed"
                     {:type :runtime-exception})))
@@ -577,7 +577,7 @@
 (declare read-symbol)
 
 (defn- read-arg
-  [rdr pct opts pending-forms]
+  [^not-native rdr pct opts pending-forms]
   (if (nil? arg-env)
     (read-symbol rdr pct)
     (let [ch (peek-char rdr)]
@@ -601,7 +601,7 @@
 (def ^:private ^:dynamic gensym-env nil)
 
 (defn- read-unquote
-  [rdr comma opts pending-forms]
+  [^not-native rdr comma opts pending-forms]
   (if-let [ch (peek-char rdr)]
     (if (= \@ ch)
       ((wrapping-reader 'clojure.core/unquote-splicing) (doto rdr read-char) \@ opts pending-forms)
@@ -776,7 +776,7 @@
   (let [method (str ns "." (if (= :extended type) "map") "__GT_" (munge record))]
     (js* "(cljs.core.apply.call(null, eval(~{}), ~{}))" method val)))
 
-(defn- read-ctor [rdr class-name opts pending-forms]
+(defn- read-ctor [^not-native rdr class-name opts pending-forms]
   (let [ns (namespace class-name)
         ns-parts (string/split class-name #"[\./]")
         record (if ns (name class-name) (last ns-parts))
@@ -800,7 +800,7 @@
             (emit-ctor :extended ns record [vals]))))
       (reader-error rdr "Invalid reader constructor form"))))
 
-(defn- read-tagged [rdr initch opts pending-forms]
+(defn- read-tagged [^not-native rdr initch opts pending-forms]
   (let [tag (read* rdr true nil opts pending-forms)]
     (if-not (symbol? tag)
       (reader-error rdr "Reader tag must be a symbol"))
@@ -841,7 +841,7 @@
   {})
 
 (defn- read*-internal
-  [reader ^boolean eof-error? sentinel return-on opts pending-forms]
+  [^not-native reader ^boolean eof-error? sentinel return-on opts pending-forms]
   (loop []
     (log-source reader
       (if-not ^boolean (garray/isEmpty pending-forms)
@@ -865,7 +865,7 @@
 (defn- read*
   ([reader eof-error? sentinel opts pending-forms]
      (read* reader eof-error? sentinel nil opts pending-forms))
-  ([reader eof-error? sentinel return-on opts pending-forms]
+  ([^not-native reader eof-error? sentinel return-on opts pending-forms]
      (try
        (read*-internal reader eof-error? sentinel return-on opts pending-forms)
        (catch js/Error e
