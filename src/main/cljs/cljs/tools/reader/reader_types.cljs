@@ -45,12 +45,12 @@
   Reader
   (read-char [reader]
     (when (> s-len s-pos)
-      (let [r (nth s s-pos)]
+      (let [r (.charAt s s-pos)]
         (set! s-pos (inc s-pos))
         r)))
   (peek-char [reader]
     (when (> s-len s-pos)
-      (nth s s-pos))))
+      (.charAt s s-pos))))
 
 (deftype NodeReadableReader [readable ^:mutable buf]
   Reader
