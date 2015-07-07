@@ -43,19 +43,26 @@
     (\" \; \@ \^ \` \~ \( \) \[ \] \{ \} \\) true
     false))
 
+(def sb (StringBuffer.))
+
 (defn- read-token
   "Read in a single logical token from the reader"
   [^not-native rdr initch]
   (if (nil? initch)
     (reader-error rdr "EOF while reading")
-    (loop [sb (StringBuffer.) ch initch]
-      (if (or (whitespace? ch)
-              (macro-terminating? ch)
-              (nil? ch))
-        (do (when-not (nil? ch)
+    (do
+      (.clear sb)
+      (loop [ch initch]
+        (if (or (whitespace? ch)
+                (macro-terminating? ch)
+                (nil? ch))
+          (do
+            (when-not (nil? ch)
               (unread rdr ch))
-            (str sb))
-        (recur (.append sb ch) (read-char rdr))))))
+            (.toString sb))
+          (do
+            (.append sb ch)
+            (recur (read-char rdr))))))))
 
 (declare read-tagged)
 
