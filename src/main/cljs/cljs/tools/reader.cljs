@@ -157,10 +157,10 @@
                           (whitespace? ch))
                     (str ch)
                     (read-token rdr ch))
-            token-len (count token)]
+            token-len (. token -length)]
         (cond
 
-         (== 1 token-len)  (nth token 0) ;;; no char type - so can't ensure/cache char
+         (== 1 token-len)  (.charAt token 0) ;;; no char type - so can't ensure/cache char
 
          (= token "newline") \newline
          (= token "space") \space
@@ -371,14 +371,14 @@
   (let [ch (read-char reader)]
     (if-not (whitespace? ch)
       (let [token (read-token reader ch)
-            s (parse-symbol token)]
-        (if s
-          (let [ns (s 0)
-                name (s 1)]
-            (if (identical? \: (nth token 0))
-              (if ns
+            ^not-native s (parse-symbol token)]
+        (if-not (nil? s)
+          (let [ns (-nth s 0)
+                name (-nth s 1)]
+            (if (identical? \: (.charAt token 0))
+              (if-not (nil? ns)
                 (let [ns (resolve-ns (symbol (subs ns 1)))]
-                  (if ns
+                  (if-not (nil? ns)
                     (keyword (str ns) name)
                     (reader-error reader "Invalid token: :" token)))
                 (keyword (str *ns*) (subs name 1)))
